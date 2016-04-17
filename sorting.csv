@@ -7,3 +7,4 @@
 Сортировка слиянием;O(n log n);O(n log n);O(n log n);O(n)
 Сортировка Шелла;O(n^2);---;O(n log^2 n);O(1)
 TimSort;O(n log n);O(n log n);O(n);O(n)
+Пирамидальная сортировка;O(n log n);O(n log n);O(n log n);O(1)
