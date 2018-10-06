@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-import sys
+import argparse
 import requests
+import logging
 import psycopg2
 from psycopg2 import sql
 
 
 DATABASE_CONFIG = {
-    "host": "192.168.167.94",
+    "host": "127.0.0.1",
     "dbname": "test_db",
     "user": "postgres",
     "password": "postgres",
@@ -33,18 +34,19 @@ def fill_table(csv_url):
                 cursor.execute(sql_insert, values)
         conn.commit()
     except psycopg2.DatabaseError as db_err:
-        print(db_err)
+        logging.error(db_err)
     except BaseException as e:
-        print(e)
+        logging.error(e)
     finally:
         if conn is not None:
             conn.close()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Script takes exactly 1 argument. {0} given.".format(len(sys.argv)-1))
-    else:
-        fill_table(sys.argv[1])
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("csv_url", help="csv file url")
+    args = arg_parser.parse_args()
+    fill_table(args.csv_url)
+
 
 
