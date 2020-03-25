@@ -22,21 +22,40 @@
 
 8) Итераторы
 	Представляет собой объект, позволяющий получить последовательный доступ к элементам коллекции (массива или контейнера), не раскрывая её внутреннего представления. В терминах СУБД итераторы называют курсорами. В простейшем случае итератором в низкоуровневых языках является указатель. В Python итератор - это объект, класс которого реализует методы __iter__() и __next__(). Итерируемый объект обязан иметь только метод __iter__(), возвращающий итератор. В цикл for можно передавать как итерируемый объект, так и сам итератор, т.к. сначала автоматически вызывается __iter__().
+
 -------Пример-------
-class MyNumbers:
+class Iterator:
+    def __init__(self, start_val, max_val):
+        self.val = start_val
+        self.max = max_val
+
     def __iter__(self):
-        self.a = 1
         return self
 
     def __next__(self):
-        if self.a <= 20:
-            x = self.a
-            self.a += 1
+        if self.val <= self.max:
+            x, self.val = self.val, self.val+1
             return x
         else:
             raise StopIteration
+        
 
-for el in MyNumbers():
+class IterableObject:
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+        
+    def __iter__(self):
+        return Iterator(self.start, self.end)
+
+    
+i = Iterator(1, 5)
+io = IterableObject(1, 5)
+
+for el in i:
+    print(el)
+    
+for el in io:
     print(el)
 --------------------
 
