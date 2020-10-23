@@ -69,6 +69,7 @@ for el in my_gen(10):
     print(el)
 --------------------
 
+
 11) Контекст менеджер
 	Менеджеры контекста служат для автоматизации освобождения ресурсов. В python менеджер контекста реализан как объект с методами __enter__() и __exit___(). __enter__() вызывается при входе в блок with и возвращает ссылку на объект, которая присваивается переменной после ключевого слова as. __exit___() выполняется при выходе из контекста.
 
@@ -88,4 +89,38 @@ class File:
 my_file = File("hello.txt", "w")
 with my_file as f:
     f.write("hello") 
+--------------------
+
+
+
+12) Дескрипторы
+	Дескриптор - объект, класс которого определяет любой из трёх методов протокола дескриптора:
+__get__(self, obj, type=None) --> value
+__set__(self, obj, value) --> None
+__delete__(self, obj) --> None
+
+Дескрипторы используются в качестве атрибутов класса. Такие атрибуты могут иметь изменённую логику при присвоении, получении значения и удалении атрибута. Например, можно проверять, удовлетворяет ли присваимое значение некоторому условию.
+
+-------Пример-------
+class Integer:
+    def __set_name__(self, obj, name):
+            self.name = name
+    
+    def __get__(self, obj, objtype):
+        return obj.__dict__[self.name]
+    
+    def __set__(self, obj, value):
+        assert isinstance(value, int), "Not integer"
+        obj.__dict__[self.name] = value
+
+class A:
+    val = Integer()
+    
+    def __init__(self, value):
+        self.val = value
+
+a = A(10)
+print(a.val)
+a.val = "hello"
+print(a.val)
 --------------------
