@@ -1,0 +1,184 @@
+1. Синхронный сервер
+
+==============Пример==============
+import socket
+
+server_socket = socket.socket()
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.bind(("localhost", 5050))
+server_socket.listen()
+
+while True:
+    client_socket, client_addr = server_socket.accept()
+    while True:
+        request = client_socket.recv(4096)
+        if not request:
+            break
+        else:
+            response = "Hello\n".encode()
+            client_socket.send(response)
+==================================
+* Не может принимать несколько соединений одновременно
+
+
+2. Асинхронность через цикл событий.
+С помощью select отслеживаем в цикле состояние сокетов.
+
+==============Пример==============
+import socket
+from select import select
+
+to_monitor = []
+
+server_socket = socket.socket()
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.bind(("localhost", 5050))
+server_socket.listen()
+to_monitor.append(server_socket)
+
+
+def accept_connection(server_socket):
+    client_socket, client_addr = server_socket.accept()
+    print("New connection from: {0}".format(client_addr))
+    to_monitor.append(client_socket)
+
+def send_response(client_socket):
+        data = client_socket.recv(4096)
+        if data:
+            client_socket.send("Hello!\n".encode())
+        else:
+            to_monitor.remove(client_socket)
+            client_socket.close()
+
+def event_loop():
+    while True:
+        ready_to_read = select(to_monitor, [], [])[0]
+        for sock in ready_to_read:
+            if sock is server_socket:
+                accept_connection(sock)
+            else:
+                send_response(sock)
+
+if __name__ == "__main__":
+    event_loop()
+==================================
+
+
+3. Используем callback
+
+==============Пример==============
+import socket
+import selectors
+
+
+selector = selectors.DefaultSelector()
+
+def server(host="localhost", port=5050):
+    server_socket = socket.socket()
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((host, port))
+    server_socket.listen()
+
+    selector.register(fileobj=server_socket, events=selectors.EVENT_READ, data=accept_connection)
+
+
+def accept_connection(server_socket):
+    client_socket, client_addr = server_socket.accept()
+    print("New connection from: {0}".format(client_addr))
+    selector.register(fileobj=client_socket, events=selectors.EVENT_READ, data=send_response)
+
+def send_response(client_socket):
+        data = client_socket.recv(4096)
+        if data:
+            client_socket.send("Hello!\n".encode())
+        else:
+            selector.unregister(client_socket)
+            client_socket.close()
+
+def event_loop():
+    while True:
+        ready = selector.select()
+        for selector_key, events in ready:
+            func, sock = selector_key.data, selector_key.fileobj
+            func(sock)
+
+
+if __name__ == "__main__":
+    server()
+    event_loop()
+==================================
+
+
+4. Используя генераторы и select.
+
+==============Пример==============
+import socket
+from collections import namedtuple
+from select import select
+
+tasks = []
+RESPONSE_MESSAGE = b"Hello World\n"
+ACTION_READ = "read"
+ACTION_WRITE = "write"
+wait_readable = {}
+wait_writable = {}
+
+def create_server():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+    server_socket.bind(("localhost", 5000))
+    server_socket.listen()
+    return accept_connections(server_socket)
+
+def accept_connections(server_socket):
+    while True:
+        yield server_socket, ACTION_READ
+        client_socket, client_addr = server_socket.accept()
+        tasks.append(receive_data(client_socket))
+        print("New connection from {0}".format(client_addr))
+
+def receive_data(client_socket):
+    while True:
+        yield client_socket, ACTION_READ
+        data = client_socket.recv(4096)
+        if not data:
+            break
+        tasks.append(send_response(client_socket))
+
+def send_response(client_socket):
+    yield client_socket, ACTION_WRITE
+    client_socket.send(RESPONSE_MESSAGE)
+
+def event_loop():
+    while any[tasks, wait_readable, wait_writable]:
+        if not tasks:
+            readable, writable, _ = select(wait_readable, wait_writable, [])
+            # when socket is ready for action it can be removed from watch list
+            # and corresponding task can be continued by calling next()
+            # to continue task we must put it back to tasks list
+            for sock in readable:
+                task = wait_readable.pop(sock)
+                tasks.append(task)
+            
+            for sock in writable:
+                task = wait_writable.pop(sock)
+                tasks.append(task)
+
+        # extract next task and call next() to continue it
+        # task will go to the next stop and return unready socket or StopIteration
+        try:
+            task = tasks.pop(0)
+            sock, action = next(task)
+            if action == ACTION_READ:
+                wait_readable[sock] = task
+            elif action == ACTION_WRITE:
+                wait_writable[sock] = task
+        except StopIteration:
+            print("Done")
+
+
+if __name__ == "__main__":
+    accept_conn = create_server()
+    tasks.append(accept_conn)
+    event_loop()
+==================================
