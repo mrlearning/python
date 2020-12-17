@@ -1,0 +1,25 @@
+========== enter_name.py ==========
+from subprocess import Popen, PIPE
+
+
+p = Popen(["python3", "say_hello.py"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+
+while True:
+    name = input("Enter name: ")
+    msg = name + "\n"
+    p.stdin.write(msg.encode())
+    p.stdin.flush()
+
+    out = p.stdout.readline().decode()
+    if not out:
+        break
+    print(out)
+===================================
+
+========== say_hello.py ==========
+while True:
+    name = input()
+    if name == "exit":
+        break
+    print("Hello {0}".format(name), flush=True)
+==================================
